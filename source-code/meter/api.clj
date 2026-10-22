@@ -68,11 +68,20 @@
   (settings/check-shape settings/options-shape options :meter/bad-options "The options")
   ;; a function logbook didn't make is refused here, not at the first line
   (logbook/with-context (:log options) {})
-  {:settings      meter-settings
-   :log           (:log options)
-   :metrics       (atom {})
-   :logged        (ConcurrentHashMap/newKeySet)
-   :failing-reads (ConcurrentHashMap/newKeySet)})
+  ;; marked, so declare-metrics! can tell a meter from any other map
+  (with-meta {:settings      meter-settings
+              :log           (:log options)
+              :metrics       (atom {})
+              :logged        (ConcurrentHashMap/newKeySet)
+              :failing-reads (ConcurrentHashMap/newKeySet)}
+    {::meter true}))
+
+(defn- check-meter
+  "Throws :meter/not-a-meter for a value make-meter didn't make: a library
+   handed something else under :meter refuses at its start."
+  [meter]
+  (when-not (::meter (meta meter))
+    (throw (ex-info "A meter is made by meter's make-meter" {:type :meter/not-a-meter}))))
 
 ;; -----------------------------------------------------------------------------
 ;; Declaring
@@ -122,8 +131,10 @@
   "Declares the metrics (each a metric-shape) on the meter, all or none:
    every problem at once, by name (:meter/bad-metrics). A name declared
    again the same way is no change; differently, refused. Each library
-   declares its own when it is handed the meter."
+   declares its own when it is handed the meter. A value make-meter didn't
+   make is refused first (:meter/not-a-meter)."
   [meter declarations]
+  (check-meter meter)
   (settings/check-shape [:sequential settings/metric-shape] declarations :meter/bad-metrics "The declarations")
   (let [most-series (get-in meter [:settings :most-series-per-metric])]
     ;; checked against what is declared inside the swap, so two libraries

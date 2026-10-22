@@ -266,6 +266,9 @@
                      {:name :shop/read-time :type :histogram :help "h" :labels {} :buckets [1] :read (fn [] {})}])))
     (testing "all or none: nothing above was declared"
       (is (= "" (meter/write-metrics-text m))))
+    (testing "a value make-meter didn't make is refused, before the declarations"
+      (doseq [not-a-meter [nil {} (into {} m)]]
+        (is (= :meter/not-a-meter (:type (thrown-data #(meter/declare-metrics! not-a-meter [started-total])))))))
     (testing "the same declaration again is no change; a different one is refused"
       (meter/declare-metrics! m [started-total])
       (meter/declare-metrics! m [started-total])

@@ -2,7 +2,7 @@
 
 One file per decision: `YYYY-MM-DD-what-we-decided.md`. The title is the decision. Each file says what we decided, why, and what we chose against. A decision changes by a new file; the old one says so at the top (`Replaced by` or `Changed in part by`), and nothing else in it is rewritten.
 
-meter is manor's metrics (manor: house and the libraries it puts together). All were decided as v0.1.0 was built, from Iron Rainbow's metrics and what they taught.
+meter is manor's metrics (manor: house and the libraries it puts together). All but the last were decided as v0.1.0 was built, from Iron Rainbow's metrics and what they taught; the last as the libraries took the meter (v0.1.1).
 
 - [meter is its own library](2026-10-23-meter-is-its-own-library.md)
 - [The text format is written by hand, on the JVM's own counters](2026-10-23-the-text-format-is-written-by-hand.md)
@@ -12,3 +12,4 @@ meter is manor's metrics (manor: house and the libraries it puts together). All 
 - [The metrics are pulled, behind a bearer token](2026-10-23-the-metrics-are-pulled-behind-a-token.md)
 - [The JVM's metrics are turned on by the app, under their usual names](2026-10-23-the-jvms-metrics-are-turned-on-by-the-app.md)
 - [Every value that sets behaviour is a setting; no hidden defaults](2026-10-23-every-value-that-sets-behaviour-is-a-setting.md)
+- [A library takes the app's meter as `:meter`, and declares its own where it starts](2026-10-23-a-library-takes-the-meter-as-meter.md)

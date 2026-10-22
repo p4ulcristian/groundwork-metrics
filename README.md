@@ -23,7 +23,7 @@ public namespace, `meter.api`.
 | name | does |
 |---|---|
 | `make-meter` `settings-shape` | a meter from its settings, `{:jvm-metrics … :most-series-per-metric …}`, and `{:log log}`; every key required, checked first |
-| `declare-metrics!` `metric-shape` | declares metrics as data, all or none, every problem at once; the same declaration again is no change |
+| `declare-metrics!` `metric-shape` | declares metrics as data, all or none, every problem at once; the same declaration again is no change; a value `make-meter` didn't make is refused |
 | `add-to-counter!` | adds an amount from 0 to a counter's series |
 | `set-gauge!` `add-to-gauge!` | sets a gauge's series, or adds to it (below 0 to take away) |
 | `record-in-histogram!` | counts a value into a histogram's bucket and its sum |
@@ -105,6 +105,11 @@ A name is written with `_` (`:mailroom/answer-seconds` is
 `-total`. A label value is text, a keyword (`"orders/of-shop"`, the
 namespace kept) or a whole number. A series appears at its first count; a
 metric without labels is there from its declaration, at 0.
+
+A manor library takes the meter as `:meter` in the options of the
+function where it starts counting, and declares its own metrics there,
+their buckets from its settings
+([why](decisions/2026-10-23-a-library-takes-the-meter-as-meter.md)).
 
 Counting never throws: a call naming no declared metric, labels that
 aren't the declared ones, or a value that isn't a finite number (below 0
