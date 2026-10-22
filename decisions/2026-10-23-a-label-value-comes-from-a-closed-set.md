@@ -1,5 +1,7 @@
 # Every label value comes from a closed set; a stranger is "other"
 
+> **Changed in part** by [A label's set may be empty: every value is "other"](2026-10-23-a-labels-set-may-be-empty.md) (2026-10-23, v0.1.2).
+
 **Decision:** every label is declared with the set of values it may take, and only those are ever written. A value outside the set, whatever it is (text a request carried, a keyword no one declared, nil), is counted under `"other"`: never a series of its own. The first stranger for each metric and label is written to the app's log at `:warn`, `:meter/label-value-not-in-set`, `{:meter/metric … :meter/label … :meter/value … :meter/counted-as "other"}`; later ones, of any value, are not. `"other"` is meter's own: no declared set may hold it.
 
 How many series a declaration can make is known before it counts: each label's values plus `"other"`, multiplied (a histogram's each times its buckets, `+Inf`, sum and count). The settings' `:most-series-per-metric` is the most one declaration may make; a bigger one is refused at the start.

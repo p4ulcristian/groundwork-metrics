@@ -56,7 +56,8 @@
    :histogram (values counted into buckets).
    :help: one line saying what it counts.
    :labels: each label's name and its closed set of values, {} for none.
-   A value outside the set is counted under \"other\".
+   A value outside the set is counted under \"other\"; an empty set
+   counts every value there (a library whose table has no names yet).
    :buckets: a histogram's upper bounds, ascending; nil for the others.
    :read: for a counter or a gauge something else already keeps (a pool's
    connections, the lines a logbook wrote), read when the metrics are
@@ -67,7 +68,7 @@
    [:name qualified-keyword?]
    [:type [:enum :counter :gauge :histogram]]
    [:help [:string {:min 1}]]
-   [:labels [:map-of :keyword [:set {:min 1} label-value-shape]]]
+   [:labels [:map-of :keyword [:set label-value-shape]]]
    [:buckets [:maybe [:vector {:min 1} number?]]]
    [:read [:maybe fn?]]])
 
@@ -160,7 +161,7 @@
       (not (apply distinct? nil (map write-label-name (keys labels))))
       (conj "no two labels' names are written the same")
 
-      (some (fn [values] (not (apply distinct? (map write-label-value values)))) (vals labels))
+      (some (fn [values] (not (apply distinct? nil (map write-label-value values)))) (vals labels))
       (conj "no two values in a label's set are written the same")
 
       (some (fn [values] (some #(= other (write-label-value %)) values)) (vals labels))

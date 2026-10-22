@@ -142,6 +142,22 @@
            (mapv #(select-keys % ["level" "event" "data"]) @lines))
         "once per metric and label: the first stranger only")))
 
+(deftest an-empty-set-counts-every-value-as-other
+  (let [lines (atom [])
+        m     (make-test-meter lines)]
+    (meter/declare-metrics! m [{:name :mailroom/asked-total :type :counter :help "Asked, by name." :labels {:name #{}}
+                                :buckets nil :read nil}])
+    (meter/add-to-counter! m :mailroom/asked-total {:name :orders/of-shop} 1)
+    (meter/add-to-counter! m :mailroom/asked-total {:name "x"} 1)
+    (is (= (str "# HELP mailroom_asked_total Asked, by name.
+"
+                "# TYPE mailroom_asked_total counter
+"
+                "mailroom_asked_total{name=\"other\"} 2
+")
+           (meter/write-metrics-text m)))
+    (is (= ["meter/label-value-not-in-set"] (events lines)))))
+
 (deftest a-long-stranger-is-logged-shortened
   (let [lines (atom [])
         m     (make-test-meter lines)]
