@@ -9,7 +9,7 @@ grow the number of series. The app serves the text at one GET, behind a
 bearer token, for Prometheus to pull.
 
 ```clojure
-io.github.p4ulcristian/meter {:git/tag "v0.1.3" :git/sha "b71484d"}
+io.github.p4ulcristian/meter {:git/tag "v0.1.4" :git/sha "bf81c46"}
 ```
 
 Needs only [logbook](https://github.com/p4ulcristian/logbook) (the app's
