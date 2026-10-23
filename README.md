@@ -46,20 +46,20 @@ public namespace, `meter.api`.
 ;; from what it already knows (here, the handler table's names)
 (meter/declare-metrics!
  meter
- [{:name    :mailroom/messages-total
+ [{:name    :bridge/messages-total
    :type    :counter
    :help    "Messages answered, by name and outcome."
    :labels  {:name    #{:orders/of-shop :orders/save}
              :outcome #{:ok :invalid :refused :too-many :failed}}
    :buckets nil
    :read    nil}
-  {:name    :mailroom/answer-seconds
+  {:name    :bridge/answer-seconds
    :type    :histogram
    :help    "Time to answer a message, in seconds."
    :labels  {:name #{:orders/of-shop :orders/save}}
    :buckets [0.005 0.01 0.025 0.05 0.1 0.25 0.5 1 2.5 5 10]   ; required: no default buckets
    :read    nil}
-  {:name    :mailroom/open-lines
+  {:name    :bridge/open-lines
    :type    :gauge
    :help    "Open sse and ws lines."
    :labels  {:pipe #{:sse :ws}}
@@ -73,11 +73,11 @@ public namespace, `meter.api`.
    :read    (fn [] {{:state :active} (.getActiveConnections pool-bean)     ; read when the text is written
                     {:state :idle}   (.getIdleConnections pool-bean)})}])
 
-(meter/add-to-counter! meter :mailroom/messages-total {:name :orders/of-shop :outcome :ok} 1)
-(meter/record-in-histogram! meter :mailroom/answer-seconds {:name :orders/of-shop} 0.012)
-(meter/add-to-gauge! meter :mailroom/open-lines {:pipe :sse} 1)
+(meter/add-to-counter! meter :bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
+(meter/record-in-histogram! meter :bridge/answer-seconds {:name :orders/of-shop} 0.012)
+(meter/add-to-gauge! meter :bridge/open-lines {:pipe :sse} 1)
 
-(meter/add-to-counter! meter :mailroom/messages-total {:name "/wp-admin" :outcome :ok} 1)
+(meter/add-to-counter! meter :bridge/messages-total {:name "/wp-admin" :outcome :ok} 1)
 ;; counted as name="other"; the first stranger for this metric and label is
 ;; written once: :warn :meter/label-value-not-in-set
 
@@ -86,23 +86,23 @@ public namespace, `meter.api`.
 ```
 
 ```
-# HELP mailroom_answer_seconds Time to answer a message, in seconds.
-# TYPE mailroom_answer_seconds histogram
-mailroom_answer_seconds_bucket{name="orders/of-shop",le="0.005"} 0
-mailroom_answer_seconds_bucket{name="orders/of-shop",le="0.01"} 0
-mailroom_answer_seconds_bucket{name="orders/of-shop",le="0.025"} 1
+# HELP bridge_answer_seconds Time to answer a message, in seconds.
+# TYPE bridge_answer_seconds histogram
+bridge_answer_seconds_bucket{name="orders/of-shop",le="0.005"} 0
+bridge_answer_seconds_bucket{name="orders/of-shop",le="0.01"} 0
+bridge_answer_seconds_bucket{name="orders/of-shop",le="0.025"} 1
 …
-mailroom_answer_seconds_bucket{name="orders/of-shop",le="+Inf"} 1
-mailroom_answer_seconds_sum{name="orders/of-shop"} 0.012
-mailroom_answer_seconds_count{name="orders/of-shop"} 1
-# HELP mailroom_messages_total Messages answered, by name and outcome.
-# TYPE mailroom_messages_total counter
-mailroom_messages_total{name="orders/of-shop",outcome="ok"} 1
-mailroom_messages_total{name="other",outcome="ok"} 1
+bridge_answer_seconds_bucket{name="orders/of-shop",le="+Inf"} 1
+bridge_answer_seconds_sum{name="orders/of-shop"} 0.012
+bridge_answer_seconds_count{name="orders/of-shop"} 1
+# HELP bridge_messages_total Messages answered, by name and outcome.
+# TYPE bridge_messages_total counter
+bridge_messages_total{name="orders/of-shop",outcome="ok"} 1
+bridge_messages_total{name="other",outcome="ok"} 1
 ```
 
-A name is written with `_` (`:mailroom/answer-seconds` is
-`mailroom_answer_seconds`), its namespace who owns it; a counter's ends in
+A name is written with `_` (`:bridge/answer-seconds` is
+`bridge_answer_seconds`), its namespace who owns it; a counter's ends in
 `-total`. A label value is text, a keyword (`"orders/of-shop"`, the
 namespace kept) or a whole number. A series appears at its first count; a
 metric without labels is there from its declaration, at 0.

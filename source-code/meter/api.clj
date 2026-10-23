@@ -10,14 +10,14 @@
 
      (meter/declare-metrics!
       meter
-      [{:name    :mailroom/messages-total
+      [{:name    :bridge/messages-total
         :type    :counter
         :help    \"Messages answered, by name and outcome.\"
         :labels  {:name #{:orders/of-shop :orders/save} :outcome #{:ok :invalid :error}}
         :buckets nil
         :read    nil}])
 
-     (meter/add-to-counter! meter :mailroom/messages-total {:name :orders/of-shop :outcome :ok} 1)
+     (meter/add-to-counter! meter :bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
 
      ;; the app's composition: GET /metrics, for the bearer of the token
      (meter/make-metrics-routes meter {:path \"/metrics\" :token token})

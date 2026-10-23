@@ -52,7 +52,7 @@
   "One metric's declaration, every key written out, nil where nothing
    applies.
    :name: a namespaced keyword, its namespace who owns it;
-   :mailroom/messages-total is written mailroom_messages_total. A counter's
+   :bridge/messages-total is written bridge_messages_total. A counter's
    ends in -total.
    :type: :counter (only goes up), :gauge (set, or up and down) or
    :histogram (values counted into buckets).
@@ -98,8 +98,8 @@
     :else            nil))
 
 (defn write-metric-name
-  "A metric's name as Prometheus reads it: :mailroom/messages-total is
-   mailroom_messages_total."
+  "A metric's name as Prometheus reads it: :bridge/messages-total is
+   bridge_messages_total."
   [metric-name]
   (str/replace (str (namespace metric-name) "_" (name metric-name)) #"[-.]" "_"))
 

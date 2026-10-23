@@ -25,7 +25,7 @@
    (meter/make-meter {:jvm-metrics jvm-metrics :most-series-per-metric 100} {:log (make-log-into lines)})))
 
 (def ^:private messages-total
-  {:name    :mailroom/messages-total
+  {:name    :bridge/messages-total
    :type    :counter
    :help    "Messages answered, by name and outcome."
    :labels  {:name #{:orders/of-shop :orders/save} :outcome #{:ok :error}}
@@ -33,11 +33,11 @@
    :read    nil})
 
 (def ^:private open-lines
-  {:name :mailroom/open-lines :type :gauge :help "Open sse and ws lines." :labels {:pipe #{:sse :ws}}
+  {:name :bridge/open-lines :type :gauge :help "Open sse and ws lines." :labels {:pipe #{:sse :ws}}
    :buckets nil :read nil})
 
 (def ^:private answer-seconds
-  {:name :mailroom/answer-seconds :type :histogram :help "Time to answer a message, in seconds."
+  {:name :bridge/answer-seconds :type :histogram :help "Time to answer a message, in seconds."
    :labels {:name #{:orders/of-shop}} :buckets [0.05 0.25 1] :read nil})
 
 (def ^:private started-total
@@ -53,34 +53,34 @@
   (let [lines (atom [])
         m     (make-test-meter lines)]
     (meter/declare-metrics! m [messages-total open-lines answer-seconds started-total])
-    (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :ok} 1)
-    (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :ok} 2)
-    (meter/add-to-counter! m :mailroom/messages-total {:name "orders/save" :outcome :error} 0.5)
-    (meter/add-to-gauge! m :mailroom/open-lines {:pipe :sse} 1)
-    (meter/add-to-gauge! m :mailroom/open-lines {:pipe :sse} 1)
-    (meter/add-to-gauge! m :mailroom/open-lines {:pipe :sse} -1)
-    (meter/set-gauge! m :mailroom/open-lines {:pipe :ws} 7)
+    (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
+    (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :ok} 2)
+    (meter/add-to-counter! m :bridge/messages-total {:name "orders/save" :outcome :error} 0.5)
+    (meter/add-to-gauge! m :bridge/open-lines {:pipe :sse} 1)
+    (meter/add-to-gauge! m :bridge/open-lines {:pipe :sse} 1)
+    (meter/add-to-gauge! m :bridge/open-lines {:pipe :sse} -1)
+    (meter/set-gauge! m :bridge/open-lines {:pipe :ws} 7)
     (doseq [seconds [0.046875 0.03125 0.125 0.5 5]]
-      (meter/record-in-histogram! m :mailroom/answer-seconds {:name :orders/of-shop} seconds))
-    (is (= (str "# HELP groundwork_starts_total Starts.\n"
+      (meter/record-in-histogram! m :bridge/answer-seconds {:name :orders/of-shop} seconds))
+    (is (= (str "# HELP bridge_answer_seconds Time to answer a message, in seconds.\n"
+                "# TYPE bridge_answer_seconds histogram\n"
+                "bridge_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.05\"} 2\n"
+                "bridge_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.25\"} 3\n"
+                "bridge_answer_seconds_bucket{name=\"orders/of-shop\",le=\"1.0\"} 4\n"
+                "bridge_answer_seconds_bucket{name=\"orders/of-shop\",le=\"+Inf\"} 5\n"
+                "bridge_answer_seconds_sum{name=\"orders/of-shop\"} 5.703125\n"
+                "bridge_answer_seconds_count{name=\"orders/of-shop\"} 5\n"
+                "# HELP bridge_messages_total Messages answered, by name and outcome.\n"
+                "# TYPE bridge_messages_total counter\n"
+                "bridge_messages_total{name=\"orders/of-shop\",outcome=\"ok\"} 3\n"
+                "bridge_messages_total{name=\"orders/save\",outcome=\"error\"} 0.5\n"
+                "# HELP bridge_open_lines Open sse and ws lines.\n"
+                "# TYPE bridge_open_lines gauge\n"
+                "bridge_open_lines{pipe=\"sse\"} 1\n"
+                "bridge_open_lines{pipe=\"ws\"} 7\n"
+                "# HELP groundwork_starts_total Starts.\n"
                 "# TYPE groundwork_starts_total counter\n"
-                "groundwork_starts_total 0\n"
-                "# HELP mailroom_answer_seconds Time to answer a message, in seconds.\n"
-                "# TYPE mailroom_answer_seconds histogram\n"
-                "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.05\"} 2\n"
-                "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.25\"} 3\n"
-                "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"1.0\"} 4\n"
-                "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"+Inf\"} 5\n"
-                "mailroom_answer_seconds_sum{name=\"orders/of-shop\"} 5.703125\n"
-                "mailroom_answer_seconds_count{name=\"orders/of-shop\"} 5\n"
-                "# HELP mailroom_messages_total Messages answered, by name and outcome.\n"
-                "# TYPE mailroom_messages_total counter\n"
-                "mailroom_messages_total{name=\"orders/of-shop\",outcome=\"ok\"} 3\n"
-                "mailroom_messages_total{name=\"orders/save\",outcome=\"error\"} 0.5\n"
-                "# HELP mailroom_open_lines Open sse and ws lines.\n"
-                "# TYPE mailroom_open_lines gauge\n"
-                "mailroom_open_lines{pipe=\"sse\"} 1\n"
-                "mailroom_open_lines{pipe=\"ws\"} 7\n")
+                "groundwork_starts_total 0\n")
            (meter/write-metrics-text m)))
     (is (= [] @lines) "nothing was logged")))
 
@@ -125,20 +125,20 @@
         m     (make-test-meter lines)]
     (meter/declare-metrics! m [messages-total])
     (doseq [stranger ["/wp-admin" "/.env" :orders/delete 404 nil {:a 1}]]
-      (meter/add-to-counter! m :mailroom/messages-total {:name stranger :outcome :ok} 1))
-    (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :timeout} 1)
-    (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :teapot} 1)
-    (is (= (str "# HELP mailroom_messages_total Messages answered, by name and outcome.\n"
-                "# TYPE mailroom_messages_total counter\n"
-                "mailroom_messages_total{name=\"orders/of-shop\",outcome=\"other\"} 2\n"
-                "mailroom_messages_total{name=\"other\",outcome=\"ok\"} 6\n")
+      (meter/add-to-counter! m :bridge/messages-total {:name stranger :outcome :ok} 1))
+    (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :timeout} 1)
+    (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :teapot} 1)
+    (is (= (str "# HELP bridge_messages_total Messages answered, by name and outcome.\n"
+                "# TYPE bridge_messages_total counter\n"
+                "bridge_messages_total{name=\"orders/of-shop\",outcome=\"other\"} 2\n"
+                "bridge_messages_total{name=\"other\",outcome=\"ok\"} 6\n")
            (meter/write-metrics-text m))
         "six strangers, one series; two outcomes, one series")
     (is (= [{"level" "warn" "event" "meter/label-value-not-in-set"
-             "data"  {"meter/metric" "mailroom/messages-total" "meter/label" "name"
+             "data"  {"meter/metric" "bridge/messages-total" "meter/label" "name"
                       "meter/value" "/wp-admin" "meter/counted-as" "other"}}
             {"level" "warn" "event" "meter/label-value-not-in-set"
-             "data"  {"meter/metric" "mailroom/messages-total" "meter/label" "outcome"
+             "data"  {"meter/metric" "bridge/messages-total" "meter/label" "outcome"
                       "meter/value" ":timeout" "meter/counted-as" "other"}}]
            (mapv #(select-keys % ["level" "event" "data"]) @lines))
         "once per metric and label: the first stranger only")))
@@ -146,15 +146,15 @@
 (deftest an-empty-set-counts-every-value-as-other
   (let [lines (atom [])
         m     (make-test-meter lines)]
-    (meter/declare-metrics! m [{:name :mailroom/asked-total :type :counter :help "Asked, by name." :labels {:name #{}}
+    (meter/declare-metrics! m [{:name :bridge/asked-total :type :counter :help "Asked, by name." :labels {:name #{}}
                                 :buckets nil :read nil}])
-    (meter/add-to-counter! m :mailroom/asked-total {:name :orders/of-shop} 1)
-    (meter/add-to-counter! m :mailroom/asked-total {:name "x"} 1)
-    (is (= (str "# HELP mailroom_asked_total Asked, by name.
+    (meter/add-to-counter! m :bridge/asked-total {:name :orders/of-shop} 1)
+    (meter/add-to-counter! m :bridge/asked-total {:name "x"} 1)
+    (is (= (str "# HELP bridge_asked_total Asked, by name.
 "
-                "# TYPE mailroom_asked_total counter
+                "# TYPE bridge_asked_total counter
 "
-                "mailroom_asked_total{name=\"other\"} 2
+                "bridge_asked_total{name=\"other\"} 2
 ")
            (meter/write-metrics-text m)))
     (is (= ["meter/label-value-not-in-set"] (events lines)))))
@@ -163,7 +163,7 @@
   (let [lines (atom [])
         m     (make-test-meter lines)]
     (meter/declare-metrics! m [messages-total])
-    (meter/add-to-counter! m :mailroom/messages-total {:name (apply str (repeat 5000 "a")) :outcome :ok} 1)
+    (meter/add-to-counter! m :bridge/messages-total {:name (apply str (repeat 5000 "a")) :outcome :ok} 1)
     (is (= (str (apply str (repeat 200 "a")) "…") (get-in (first @lines) ["data" "meter/value"])))))
 
 ;; -----------------------------------------------------------------------------
@@ -224,22 +224,22 @@
         m     (make-test-meter lines)]
     (meter/declare-metrics! m [messages-total open-lines])
     (dotimes [_ 3]
-      (is (nil? (meter/add-to-counter! m :mailroom/nothing-total {} 1)))
-      (is (nil? (meter/add-to-counter! m :mailroom/open-lines {:pipe :ws} 1)))
-      (is (nil? (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :ok} -1)))
-      (is (nil? (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop :outcome :ok} ##NaN)))
-      (is (nil? (meter/set-gauge! m :mailroom/open-lines {:pipe :ws} "7")))
-      (is (nil? (meter/add-to-counter! m :mailroom/messages-total {:name :orders/of-shop} 1)))
-      (is (nil? (meter/add-to-counter! m :mailroom/messages-total nil 1)))
-      (is (nil? (meter/record-in-histogram! m "mailroom/open-lines" {} 1))))
+      (is (nil? (meter/add-to-counter! m :bridge/nothing-total {} 1)))
+      (is (nil? (meter/add-to-counter! m :bridge/open-lines {:pipe :ws} 1)))
+      (is (nil? (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :ok} -1)))
+      (is (nil? (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop :outcome :ok} ##NaN)))
+      (is (nil? (meter/set-gauge! m :bridge/open-lines {:pipe :ws} "7")))
+      (is (nil? (meter/add-to-counter! m :bridge/messages-total {:name :orders/of-shop} 1)))
+      (is (nil? (meter/add-to-counter! m :bridge/messages-total nil 1)))
+      (is (nil? (meter/record-in-histogram! m "bridge/open-lines" {} 1))))
     (is (= ["meter/metric-not-declared" "meter/wrong-type" "meter/bad-value" "meter/bad-value" "meter/bad-labels"
             "meter/metric-not-declared"]
            (events lines)))
     (is (every? #(= "error" (get % "level")) @lines))
-    (is (= (str "# HELP mailroom_messages_total Messages answered, by name and outcome.\n"
-                "# TYPE mailroom_messages_total counter\n"
-                "# HELP mailroom_open_lines Open sse and ws lines.\n"
-                "# TYPE mailroom_open_lines gauge\n")
+    (is (= (str "# HELP bridge_messages_total Messages answered, by name and outcome.\n"
+                "# TYPE bridge_messages_total counter\n"
+                "# HELP bridge_open_lines Open sse and ws lines.\n"
+                "# TYPE bridge_open_lines gauge\n")
            (meter/write-metrics-text m)))))
 
 ;; -----------------------------------------------------------------------------
@@ -307,16 +307,16 @@
                             (fn []
                               (.await start)
                               (dotimes [_ 10000]
-                                (meter/add-to-counter! m :mailroom/messages-total {:name :orders/save :outcome :ok} 1)
-                                (meter/add-to-gauge! m :mailroom/open-lines {:pipe :ws} 1)
-                                (meter/record-in-histogram! m :mailroom/answer-seconds {:name :orders/of-shop} 0.1))))))]
+                                (meter/add-to-counter! m :bridge/messages-total {:name :orders/save :outcome :ok} 1)
+                                (meter/add-to-gauge! m :bridge/open-lines {:pipe :ws} 1)
+                                (meter/record-in-histogram! m :bridge/answer-seconds {:name :orders/of-shop} 0.1))))))]
       (.countDown start)
       (run! #(.join ^Thread %) threads))
     (let [text (meter/write-metrics-text m)]
-      (is (str/includes? text "mailroom_messages_total{name=\"orders/save\",outcome=\"ok\"} 160000\n"))
-      (is (str/includes? text "mailroom_open_lines{pipe=\"ws\"} 160000\n"))
-      (is (str/includes? text "mailroom_answer_seconds_count{name=\"orders/of-shop\"} 160000\n"))
-      (is (str/includes? text "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.25\"} 160000\n")))))
+      (is (str/includes? text "bridge_messages_total{name=\"orders/save\",outcome=\"ok\"} 160000\n"))
+      (is (str/includes? text "bridge_open_lines{pipe=\"ws\"} 160000\n"))
+      (is (str/includes? text "bridge_answer_seconds_count{name=\"orders/of-shop\"} 160000\n"))
+      (is (str/includes? text "bridge_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.25\"} 160000\n")))))
 
 ;; -----------------------------------------------------------------------------
 ;; The route
