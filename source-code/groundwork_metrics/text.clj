@@ -1,10 +1,10 @@
-(ns meter.text
+(ns groundwork-metrics.text
   "Prometheus' text exposition format, version 0.0.4, written by hand: a
    family is its # HELP and # TYPE lines and its samples, one per line.
 
-     # HELP bridge_messages_total Messages answered, by name and outcome.
-     # TYPE bridge_messages_total counter
-     bridge_messages_total{name=\"orders/of-shop\",outcome=\"ok\"} 41
+     # HELP groundwork_bridge_messages_total Messages answered, by name and outcome.
+     # TYPE groundwork_bridge_messages_total counter
+     groundwork_bridge_messages_total{name=\"orders/of-shop\",outcome=\"ok\"} 41
 
    A family here is {:name :help :type :samples}, each sample {:name
    :labels [[label-name text] …] :value text}; the caller orders both."

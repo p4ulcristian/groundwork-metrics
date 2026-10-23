@@ -1,13 +1,13 @@
-;; meter: groundwork's metrics. A meter the app makes once and hands to every
+;; groundwork-metrics: groundwork's metrics. A meter the app makes once and hands to every
 ;; library; metrics declared as data, each label's values a closed set; the
-;; text Prometheus pulls, behind a bearer token. One tree: source-code/meter/.
+;; text Prometheus pulls, behind a bearer token. One tree: source-code/groundwork_metrics/.
 {:paths ["source-code"]
 
  :deps
  {;; the app's log, handed in: a value outside a label's set, a bad call
-  io.github.p4ulcristian/logbook {:git/tag "v0.1.2" :git/sha "823f8fc"}
+  io.github.p4ulcristian/groundwork-logs {:git/tag "v0.1.2" :git/sha "823f8fc"}
   ;; the route's bearer token, a secret that prints as its name
-  io.github.p4ulcristian/safe    {:git/tag "v0.1.1" :git/sha "72d0dbb"}
+  io.github.p4ulcristian/groundwork-settings    {:git/tag "v0.1.1" :git/sha "72d0dbb"}
   ;; the settings, options and declarations, checked before anything counts
   metosin/malli                 {:mvn/version "0.20.3"}}
 

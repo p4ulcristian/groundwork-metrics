@@ -1,5 +1,5 @@
-(ns meter.settings
-  "meter's settings, options and metric declarations, as malli shapes,
+(ns groundwork-metrics.settings
+  "groundwork-metrics's settings, options and metric declarations, as malli shapes,
    checked before anything counts. Nothing has a default: every key is
    written out, nil where nothing applies, and a missing or unknown one
    refuses, named, with every other problem at once."
@@ -7,11 +7,11 @@
    [clojure.string :as str]
    [malli.core :as malli]
    [malli.error :as malli-error]
-   [safe.api :as safe]))
+   [groundwork-settings.api :as settings]))
 
 (def other
   "The value a label is counted under when the value given isn't in its
-   set. meter's own: no declared set may hold it."
+   set. groundwork-metrics's own: no declared set may hold it."
   "other")
 
 (def settings-shape
@@ -29,7 +29,7 @@
 
 (def options-shape
   "make-meter's options, every key required.
-   :log: the app's log, (log level event data), as logbook makes it."
+   :log: the app's log, (log level event data), as groundwork-logs makes it."
   [:map {:closed true}
    [:log fn?]])
 
@@ -37,11 +37,11 @@
   "make-metrics-routes' settings, every key required.
    :path: the GET Prometheus pulls the metrics from, \"/metrics\".
    :token: the bearer token it must send (Authorization: Bearer …), a
-   secret of safe's (#secret :meter/token in the app's settings file);
+   secret of groundwork-settings's (#secret :groundwork-metrics/token in the app's settings file);
    text written out is refused."
   [:map {:closed true}
    [:path [:re #"^/"]]
-   [:token safe/secret]])
+   [:token settings/secret]])
 
 (def label-value-shape
   "A label's value: text, a keyword (written without its colon, its
@@ -52,7 +52,7 @@
   "One metric's declaration, every key written out, nil where nothing
    applies.
    :name: a namespaced keyword, its namespace who owns it;
-   :bridge/messages-total is written bridge_messages_total. A counter's
+   :groundwork-bridge/messages-total is written groundwork_bridge_messages_total. A counter's
    ends in -total.
    :type: :counter (only goes up), :gauge (set, or up and down) or
    :histogram (values counted into buckets).
@@ -62,7 +62,7 @@
    counts every value there (a library whose table has no names yet).
    :buckets: a histogram's upper bounds, ascending; nil for the others.
    :read: for a counter or a gauge something else already keeps (a pool's
-   connections, the lines a logbook wrote), read when the metrics are
+   connections, the lines a logger wrote), read when the metrics are
    written: (fn [] {labels value}), {{} 3} without labels; nil for a
    histogram and for a metric meter counts. A read counter's values only
    go up; that is the reader's to keep."
@@ -98,8 +98,8 @@
     :else            nil))
 
 (defn write-metric-name
-  "A metric's name as Prometheus reads it: :bridge/messages-total is
-   bridge_messages_total."
+  "A metric's name as Prometheus reads it: :groundwork-bridge/messages-total is
+   groundwork_bridge_messages_total."
   [metric-name]
   (str/replace (str (namespace metric-name) "_" (name metric-name)) #"[-.]" "_"))
 
@@ -145,7 +145,7 @@
       (conj "only a histogram has :buckets")
 
       (and buckets (not (every? #(Double/isFinite (double %)) buckets)))
-      (conj "its buckets are finite numbers; +Inf is meter's own")
+      (conj "its buckets are finite numbers; +Inf is groundwork-metrics's own")
 
       (and buckets (not (apply < (map double buckets))))
       (conj "its buckets go up, each bigger than the one before")
@@ -167,7 +167,7 @@
       (conj "no two values in a label's set are written the same")
 
       (some (fn [values] (some #(= other (write-label-value %)) values)) (vals labels))
-      (conj (str "\"" other "\" is meter's own, for a value outside the set; no set holds it"))
+      (conj (str "\"" other "\" is groundwork-metrics's own, for a value outside the set; no set holds it"))
 
       (> (count-series declaration) most-series-per-metric)
       (conj (str "it can make " (count-series declaration) " series, more than the settings' :most-series-per-metric, "

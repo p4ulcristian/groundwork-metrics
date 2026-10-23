@@ -1,26 +1,26 @@
-(ns meter.api
+(ns groundwork-metrics.api
   "groundwork's metrics: a meter the app makes once and hands to every library,
    as it hands its log. Each library declares its metrics on it as data,
    every label with its closed set of values, and counts into them; the
-   app serves the text Prometheus pulls, behind a bearer token. meter's one
+   app serves the text Prometheus pulls, behind a bearer token. groundwork-metrics's one
    public namespace.
 
-     (def meter (meter/make-meter {:jvm-metrics true :most-series-per-metric 2000}
+     (def meter (metrics/make-meter {:jvm-metrics true :most-series-per-metric 2000}
                                   {:log log}))
 
-     (meter/declare-metrics!
+     (metrics/declare-metrics!
       meter
-      [{:name    :bridge/messages-total
+      [{:name    :groundwork-bridge/messages-total
         :type    :counter
         :help    \"Messages answered, by name and outcome.\"
         :labels  {:name #{:orders/of-shop :orders/save} :outcome #{:ok :invalid :error}}
         :buckets nil
         :read    nil}])
 
-     (meter/add-to-counter! meter :bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
+     (metrics/add-to-counter! meter :groundwork-bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
 
      ;; the app's composition: GET /metrics, for the bearer of the token
-     (meter/make-metrics-routes meter {:path \"/metrics\" :token token})
+     (metrics/make-metrics-routes meter {:path \"/metrics\" :token token})
 
    Every label value comes from a closed set declared up front: a value
    outside it is counted under \"other\", never as a series of its own, and
@@ -31,11 +31,11 @@
    per metric and mistake."
   (:require
    [clojure.string :as str]
-   [logbook.api :as logbook]
-   [meter.jvm :as jvm]
-   [meter.settings :as settings]
-   [meter.text :as text]
-   [safe.api :as safe])
+   [groundwork-logs.api :as logs]
+   [groundwork-metrics.jvm :as jvm]
+   [groundwork-metrics.settings :as settings]
+   [groundwork-metrics.text :as text]
+   [groundwork-settings.api :as groundwork-settings])
   (:import
    (java.util Map Set)
    (java.util.concurrent ConcurrentHashMap)
@@ -45,13 +45,13 @@
 (def settings-shape
   "make-meter's settings, every key required:
    {:jvm-metrics true|false :most-series-per-metric n}. See
-   meter.settings/settings-shape for each key."
+   groundwork-metrics.settings/settings-shape for each key."
   settings/settings-shape)
 
 (def metric-shape
   "One metric's declaration, every key written out, nil where nothing
    applies: {:name :type :help :labels :buckets :read}. See
-   meter.settings/metric-shape for each key."
+   groundwork-metrics.settings/metric-shape for each key."
   settings/metric-shape)
 
 (def routes-settings-shape
@@ -60,14 +60,14 @@
 
 (defn make-meter
   "A meter from its settings (settings-shape) and options, {:log log}, the
-   app's log as logbook makes it; every key required, checked first
-   (:meter/bad-settings, :meter/bad-options, :logbook/not-a-log). No
+   app's log as groundwork-logs makes it; every key required, checked first
+   (:groundwork-metrics/bad-settings, :groundwork-metrics/bad-options, :groundwork-logs/not-a-log). No
    metric is declared yet."
   [meter-settings options]
-  (settings/check-shape settings/settings-shape meter-settings :meter/bad-settings "The settings")
-  (settings/check-shape settings/options-shape options :meter/bad-options "The options")
-  ;; a function logbook didn't make is refused here, not at the first line
-  (logbook/with-context (:log options) {})
+  (settings/check-shape settings/settings-shape meter-settings :groundwork-metrics/bad-settings "The settings")
+  (settings/check-shape settings/options-shape options :groundwork-metrics/bad-options "The options")
+  ;; a function groundwork-logs didn't make is refused here, not at the first line
+  (logs/with-context (:log options) {})
   ;; marked, so declare-metrics! can tell a meter from any other map
   (with-meta {:settings      meter-settings
               :log           (:log options)
@@ -77,11 +77,11 @@
     {::meter true}))
 
 (defn- check-meter
-  "Throws :meter/not-a-meter for a value make-meter didn't make: a library
+  "Throws :groundwork-metrics/not-a-meter for a value make-meter didn't make: a library
    handed something else under :meter refuses at its start."
   [meter]
   (when-not (::meter (meta meter))
-    (throw (ex-info "A meter is made by meter's make-meter" {:type :meter/not-a-meter}))))
+    (throw (ex-info "A meter is made by groundwork-metrics's make-meter" {:type :groundwork-metrics/not-a-meter}))))
 
 ;; -----------------------------------------------------------------------------
 ;; Declaring
@@ -129,13 +129,13 @@
 
 (defn declare-metrics!
   "Declares the metrics (each a metric-shape) on the meter, all or none:
-   every problem at once, by name (:meter/bad-metrics). A name declared
+   every problem at once, by name (:groundwork-metrics/bad-metrics). A name declared
    again the same way is no change; differently, refused. Each library
    declares its own when it is handed the meter. A value make-meter didn't
-   make is refused first (:meter/not-a-meter)."
+   make is refused first (:groundwork-metrics/not-a-meter)."
   [meter declarations]
   (check-meter meter)
-  (settings/check-shape [:sequential settings/metric-shape] declarations :meter/bad-metrics "The declarations")
+  (settings/check-shape [:sequential settings/metric-shape] declarations :groundwork-metrics/bad-metrics "The declarations")
   (let [most-series (get-in meter [:settings :most-series-per-metric])]
     ;; checked against what is declared inside the swap, so two libraries
     ;; declaring at once both see the other's
@@ -149,7 +149,7 @@
                                         (find-batch-problems declared declarations))]
                (when (seq problems)
                  (throw (ex-info (str "The declarations have problems: " (pr-str problems))
-                                 {:type :meter/bad-metrics :errors problems})))
+                                 {:type :groundwork-metrics/bad-metrics :errors problems})))
                (reduce (fn [metrics {metric-name :name :as declaration}]
                          (if (contains? metrics metric-name)
                            metrics
@@ -178,17 +178,17 @@
   [meter {:keys [declaration label-names label-texts allowed]} labels]
   (let [metric-name (:name declaration)]
     (if-not (and (map? labels) (= (set (keys labels)) (set label-names)))
-      (log-once! meter [:bad-labels metric-name] :error :meter/bad-labels
-                 {:meter/metric metric-name :meter/declared-labels label-names
-                  :meter/given (shorten labels)})
+      (log-once! meter [:bad-labels metric-name] :error :groundwork-metrics/bad-labels
+                 {:groundwork-metrics/metric metric-name :groundwork-metrics/declared-labels label-names
+                  :groundwork-metrics/given (shorten labels)})
       (mapv (fn [label-name label-text]
               (let [given (get labels label-name)
                     text  (settings/write-label-value given)]
                 (if (contains? (allowed label-name) text)
                   text
-                  (do (log-once! meter [:not-in-set metric-name label-name] :warn :meter/label-value-not-in-set
-                                 {:meter/metric metric-name :meter/label label-text :meter/value (shorten given)
-                                  :meter/counted-as settings/other})
+                  (do (log-once! meter [:not-in-set metric-name label-name] :warn :groundwork-metrics/label-value-not-in-set
+                                 {:groundwork-metrics/metric metric-name :groundwork-metrics/label label-text :groundwork-metrics/value (shorten given)
+                                  :groundwork-metrics/counted-as settings/other})
                       settings/other))))
             label-names label-texts))))
 
@@ -199,13 +199,13 @@
   (let [metric (get @(:metrics meter) metric-name)]
     (cond
       (nil? metric)
-      (log-once! meter [:not-declared metric-name] :error :meter/metric-not-declared
-                 {:meter/metric (if (keyword? metric-name) metric-name (shorten metric-name)) :meter/counting counting})
+      (log-once! meter [:not-declared metric-name] :error :groundwork-metrics/metric-not-declared
+                 {:groundwork-metrics/metric (if (keyword? metric-name) metric-name (shorten metric-name)) :groundwork-metrics/counting counting})
 
       (or (not= type (get-in metric [:declaration :type])) (some? (get-in metric [:declaration :read])))
-      (log-once! meter [:wrong-type metric-name counting] :error :meter/wrong-type
-                 {:meter/metric metric-name :meter/type (get-in metric [:declaration :type])
-                  :meter/read? (some? (get-in metric [:declaration :read])) :meter/counting counting})
+      (log-once! meter [:wrong-type metric-name counting] :error :groundwork-metrics/wrong-type
+                 {:groundwork-metrics/metric metric-name :groundwork-metrics/type (get-in metric [:declaration :type])
+                  :groundwork-metrics/read? (some? (get-in metric [:declaration :read])) :groundwork-metrics/counting counting})
 
       :else metric)))
 
@@ -214,8 +214,8 @@
   (or (and (number? value)
            (Double/isFinite (double value))
            (or (not at-least-zero?) (<= 0.0 (double value))))
-      (log-once! meter [:bad-value metric-name counting] :error :meter/bad-value
-                 {:meter/metric metric-name :meter/counting counting :meter/value (shorten value)})))
+      (log-once! meter [:bad-value metric-name counting] :error :groundwork-metrics/bad-value
+                 {:groundwork-metrics/metric metric-name :groundwork-metrics/counting counting :groundwork-metrics/value (shorten value)})))
 
 (defn- find-cell [metric series-key]
   (.computeIfAbsent ^Map (:series metric) series-key
@@ -232,8 +232,8 @@
         (when-let [series-key (find-series-key meter metric labels)]
           (f metric (find-cell metric series-key) (double value)))))
     (catch Throwable failure
-      (log-once! meter [:failed metric-name counting] :error :meter/counting-failed
-                 {:meter/metric (shorten metric-name) :meter/counting counting :error failure})))
+      (log-once! meter [:failed metric-name counting] :error :groundwork-metrics/counting-failed
+                 {:groundwork-metrics/metric (shorten metric-name) :groundwork-metrics/counting counting :error failure})))
   nil)
 
 (defn add-to-counter!
@@ -304,10 +304,10 @@
                       {:error result}
 
                       (not (and (map? result) (every? (fn [[labels value]] (and (map? labels) (number? value))) result)))
-                      {:meter/given (shorten result)})]
+                      {:groundwork-metrics/given (shorten result)})]
     (if failure
       (do (when (.add failing-reads metric-name)
-            (log :error :meter/read-failed (merge {:meter/metric metric-name} failure)))
+            (log :error :groundwork-metrics/read-failed (merge {:groundwork-metrics/metric metric-name} failure)))
           nil)
       (do (.remove failing-reads metric-name)
           (reduce (fn [values [labels value]]
@@ -350,13 +350,13 @@
 
 (defn- has-token?
   "Whether the request carries the token (a secret) as its bearer token,
-   Authorization: Bearer <token>. The token is compared by safe/equal?, in
+   Authorization: Bearer <token>. The token is compared by groundwork-settings/equal?, in
    constant time whatever its length and wherever the two first differ."
   [request token]
   (let [given (get-in request [:headers "authorization"])]
     (and (string? given)
          (str/starts-with? given "Bearer ")
-         (safe/equal? token (subs given (count "Bearer "))))))
+         (groundwork-settings/equal? token (subs given (count "Bearer "))))))
 
 (def ^:private not-allowed
   {:status  401
@@ -368,9 +368,9 @@
    handler a plain Ring handler): with the settings' :token as the bearer
    token (Authorization: Bearer …, compared in constant time), 200 and the
    text (write-metrics-text), never cached; without it, 401. The settings
-   are checked first (:meter/bad-routes-settings)."
+   are checked first (:groundwork-metrics/bad-routes-settings)."
   [meter routes-settings]
-  (settings/check-shape settings/routes-settings-shape routes-settings :meter/bad-routes-settings "The routes settings")
+  (settings/check-shape settings/routes-settings-shape routes-settings :groundwork-metrics/bad-routes-settings "The routes settings")
   (let [{:keys [path token]} routes-settings]
     [[path {:get {:handler (fn [request]
                              (if-not (has-token? request token)

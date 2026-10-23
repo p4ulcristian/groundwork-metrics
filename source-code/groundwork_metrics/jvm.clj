@@ -1,4 +1,4 @@
-(ns meter.jvm
+(ns groundwork-metrics.jvm
   "The JVM's and the process's metrics, read from the JVM's management
    beans each time the metrics are written, under the names Prometheus'
    Java client (simpleclient_hotspot) gives them, so dashboards made for it
@@ -17,7 +17,7 @@
    A max the JVM doesn't know is -1, as the JVM says it."
   (:require
    [clojure.java.io :as io]
-   [meter.text :as text])
+   [groundwork-metrics.text :as text])
   (:import
    (com.sun.management UnixOperatingSystemMXBean)
    (java.lang.management GarbageCollectorMXBean ManagementFactory MemoryPoolMXBean MemoryUsage)

@@ -9,15 +9,15 @@ grow the number of series. The app serves the text at one GET, behind a
 bearer token, for Prometheus to pull.
 
 ```clojure
-io.github.p4ulcristian/meter {:git/tag "v0.1.4" :git/sha "bf81c46"}
+io.github.p4ulcristian/groundwork-metrics {:git/tag "v0.1.4" :git/sha "bf81c46"}
 ```
 
-Needs only [logbook](https://github.com/p4ulcristian/logbook) (the app's
-log, handed in), [safe](https://github.com/p4ulcristian/safe) (the route's
+Needs only [groundwork-logs](https://github.com/p4ulcristian/groundwork-logs) (the app's
+log, handed in), [groundwork-settings](https://github.com/p4ulcristian/groundwork-settings) (the route's
 token is its secret) and malli. Writes Prometheus' text format, version 0.0.4,
 itself: no Prometheus client
 ([why](decisions/2026-10-23-the-text-format-is-written-by-hand.md)). One
-public namespace, `meter.api`.
+public namespace, `groundwork-metrics.api`.
 
 ## The api
 
@@ -32,40 +32,40 @@ public namespace, `meter.api`.
 | `make-metrics-routes` `routes-settings-shape` | the GET at `:path`, as reitit data: 200 and the text for `Authorization: Bearer <:token>` (constant-time), else 401 |
 
 ```clojure
-(require '[logbook.api :as logbook]
-         '[meter.api :as meter])
+(require '[groundwork-logs.api :as logs]
+         '[groundwork-metrics.api :as metrics])
 
-(def log (logbook/log-function (logbook/make-logbook {:lowest-level :info :format :json
+(def log (logs/log-function (logs/make-logger {:lowest-level :info :format :json
                                                       :errors-kept 1000 :write-to :stdout})))
 
-(def meter (meter/make-meter {:jvm-metrics            true   ; memory, GC, threads, process; false: only the declared
+(def meter (metrics/make-meter {:jvm-metrics            true   ; memory, GC, threads, process; false: only the declared
                               :most-series-per-metric 5000}  ; a declaration that can make more is refused
                              {:log log}))
 
 ;; a library declares its own when it is handed the meter; the sets come
 ;; from what it already knows (here, the handler table's names)
-(meter/declare-metrics!
+(metrics/declare-metrics!
  meter
- [{:name    :bridge/messages-total
+ [{:name    :groundwork-bridge/messages-total
    :type    :counter
    :help    "Messages answered, by name and outcome."
    :labels  {:name    #{:orders/of-shop :orders/save}
              :outcome #{:ok :invalid :refused :too-many :failed}}
    :buckets nil
    :read    nil}
-  {:name    :bridge/answer-seconds
+  {:name    :groundwork-bridge/answer-seconds
    :type    :histogram
    :help    "Time to answer a message, in seconds."
    :labels  {:name #{:orders/of-shop :orders/save}}
    :buckets [0.005 0.01 0.025 0.05 0.1 0.25 0.5 1 2.5 5 10]   ; required: no default buckets
    :read    nil}
-  {:name    :bridge/open-lines
+  {:name    :groundwork-bridge/open-lines
    :type    :gauge
    :help    "Open sse and ws lines."
    :labels  {:pipe #{:sse :ws}}
    :buckets nil
    :read    nil}
-  {:name    :cellar/pool-connections
+  {:name    :groundwork-postgres/pool-connections
    :type    :gauge
    :help    "The pool's connections, by state."
    :labels  {:state #{:active :idle}}
@@ -73,36 +73,36 @@ public namespace, `meter.api`.
    :read    (fn [] {{:state :active} (.getActiveConnections pool-bean)     ; read when the text is written
                     {:state :idle}   (.getIdleConnections pool-bean)})}])
 
-(meter/add-to-counter! meter :bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
-(meter/record-in-histogram! meter :bridge/answer-seconds {:name :orders/of-shop} 0.012)
-(meter/add-to-gauge! meter :bridge/open-lines {:pipe :sse} 1)
+(metrics/add-to-counter! meter :groundwork-bridge/messages-total {:name :orders/of-shop :outcome :ok} 1)
+(metrics/record-in-histogram! meter :groundwork-bridge/answer-seconds {:name :orders/of-shop} 0.012)
+(metrics/add-to-gauge! meter :groundwork-bridge/open-lines {:pipe :sse} 1)
 
-(meter/add-to-counter! meter :bridge/messages-total {:name "/wp-admin" :outcome :ok} 1)
+(metrics/add-to-counter! meter :groundwork-bridge/messages-total {:name "/wp-admin" :outcome :ok} 1)
 ;; counted as name="other"; the first stranger for this metric and label is
-;; written once: :warn :meter/label-value-not-in-set
+;; written once: :warn :groundwork-metrics/label-value-not-in-set
 
 ;; the app's composition: beside its other routes, outside sessions
-(meter/make-metrics-routes meter {:path "/metrics" :token metrics-token})   ; safe's secret, #secret :meter/token
+(metrics/make-metrics-routes meter {:path "/metrics" :token metrics-token})   ; groundwork-settings's secret, #secret :groundwork-metrics/token
 ```
 
 ```
-# HELP bridge_answer_seconds Time to answer a message, in seconds.
-# TYPE bridge_answer_seconds histogram
-bridge_answer_seconds_bucket{name="orders/of-shop",le="0.005"} 0
-bridge_answer_seconds_bucket{name="orders/of-shop",le="0.01"} 0
-bridge_answer_seconds_bucket{name="orders/of-shop",le="0.025"} 1
+# HELP groundwork_bridge_answer_seconds Time to answer a message, in seconds.
+# TYPE groundwork_bridge_answer_seconds histogram
+groundwork_bridge_answer_seconds_bucket{name="orders/of-shop",le="0.005"} 0
+groundwork_bridge_answer_seconds_bucket{name="orders/of-shop",le="0.01"} 0
+groundwork_bridge_answer_seconds_bucket{name="orders/of-shop",le="0.025"} 1
 …
-bridge_answer_seconds_bucket{name="orders/of-shop",le="+Inf"} 1
-bridge_answer_seconds_sum{name="orders/of-shop"} 0.012
-bridge_answer_seconds_count{name="orders/of-shop"} 1
-# HELP bridge_messages_total Messages answered, by name and outcome.
-# TYPE bridge_messages_total counter
-bridge_messages_total{name="orders/of-shop",outcome="ok"} 1
-bridge_messages_total{name="other",outcome="ok"} 1
+groundwork_bridge_answer_seconds_bucket{name="orders/of-shop",le="+Inf"} 1
+groundwork_bridge_answer_seconds_sum{name="orders/of-shop"} 0.012
+groundwork_bridge_answer_seconds_count{name="orders/of-shop"} 1
+# HELP groundwork_bridge_messages_total Messages answered, by name and outcome.
+# TYPE groundwork_bridge_messages_total counter
+groundwork_bridge_messages_total{name="orders/of-shop",outcome="ok"} 1
+groundwork_bridge_messages_total{name="other",outcome="ok"} 1
 ```
 
-A name is written with `_` (`:bridge/answer-seconds` is
-`bridge_answer_seconds`), its namespace who owns it; a counter's ends in
+A name is written with `_` (`:groundwork-bridge/answer-seconds` is
+`groundwork_bridge_answer_seconds`), its namespace who owns it; a counter's ends in
 `-total`. A label value is text, a keyword (`"orders/of-shop"`, the
 namespace kept) or a whole number. A series appears at its first count; a
 metric without labels is there from its declaration, at 0.
