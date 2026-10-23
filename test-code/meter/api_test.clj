@@ -8,7 +8,8 @@
    [clojure.test :refer [deftest is testing]]
    [jsonista.core :as json]
    [logbook.api :as logbook]
-   [meter.api :as meter])
+   [meter.api :as meter]
+   [safe.api :as safe])
   (:import
    (java.util.concurrent CountDownLatch)))
 
@@ -323,7 +324,7 @@
 (deftest the-route-answers-the-bearer-of-the-token-and-401-to-anyone-else
   (let [m       (make-test-meter (atom []))
         _       (meter/declare-metrics! m [started-total])
-        [[path {{:keys [handler]} :get}] :as routes] (meter/make-metrics-routes m {:path "/metrics" :token "s3cret"})
+        [[path {{:keys [handler]} :get}] :as routes] (meter/make-metrics-routes m {:path "/metrics" :token (safe/make-secret :meter/token "s3cret")})
         ask     #(handler {:request-method :get :uri "/metrics" :headers %})]
     (is (= 1 (count routes)))
     (is (= "/metrics" path))
@@ -341,4 +342,8 @@
       (is (= {:token ["missing required key"]}
              (:errors (thrown-data #(meter/make-metrics-routes m {:path "/metrics"})))))
       (is (= :meter/bad-routes-settings
-             (:type (thrown-data #(meter/make-metrics-routes m {:path "/metrics" :token ""}))))))))
+             (:type (thrown-data #(meter/make-metrics-routes m {:path "/metrics" :token ""}))))))
+    (testing "the token is a secret: written out as text, it is refused, and the text is never said"
+      (let [refused (thrown-data #(meter/make-metrics-routes m {:path "/metrics" :token "written-out-token"}))]
+        (is (= {:token ["should be a #secret, read from the settings' secrets source"]} (:errors refused)))
+        (is (not (str/includes? (pr-str refused) "written-out-token")))))))

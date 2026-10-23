@@ -30,13 +30,13 @@
    for a counter) counts nothing and is written to the log at :error, once
    per metric and mistake."
   (:require
+   [clojure.string :as str]
    [logbook.api :as logbook]
    [meter.jvm :as jvm]
    [meter.settings :as settings]
-   [meter.text :as text])
+   [meter.text :as text]
+   [safe.api :as safe])
   (:import
-   (java.nio.charset StandardCharsets)
-   (java.security MessageDigest)
    (java.util Map Set)
    (java.util.concurrent ConcurrentHashMap)
    (java.util.concurrent.atomic AtomicLong DoubleAdder LongAdder)
@@ -348,17 +348,15 @@
 ;; -----------------------------------------------------------------------------
 ;; The route
 
-(defn- hash-text ^bytes [^String text]
-  (.digest (MessageDigest/getInstance "SHA-256") (.getBytes text StandardCharsets/UTF_8)))
-
 (defn- has-token?
-  "Whether the request carries the token as its bearer token. Both sides
-   are hashed first, so the comparison takes the same time whatever the
-   token's length and wherever the two first differ."
+  "Whether the request carries the token (a secret) as its bearer token,
+   Authorization: Bearer <token>. The token is compared by safe/equal?, in
+   constant time whatever its length and wherever the two first differ."
   [request token]
   (let [given (get-in request [:headers "authorization"])]
     (and (string? given)
-         (MessageDigest/isEqual (hash-text given) (hash-text (str "Bearer " token))))))
+         (str/starts-with? given "Bearer ")
+         (safe/equal? token (subs given (count "Bearer "))))))
 
 (def ^:private not-allowed
   {:status  401

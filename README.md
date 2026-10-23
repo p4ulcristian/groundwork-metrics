@@ -13,7 +13,8 @@ io.github.p4ulcristian/meter {:git/tag "v0.1.2" :git/sha "a0a977b"}
 ```
 
 Needs only [logbook](https://github.com/p4ulcristian/logbook) (the app's
-log, handed in) and malli. Writes Prometheus' text format, version 0.0.4,
+log, handed in), [safe](https://github.com/p4ulcristian/safe) (the route's
+token is its secret) and malli. Writes Prometheus' text format, version 0.0.4,
 itself: no Prometheus client
 ([why](decisions/2026-10-23-the-text-format-is-written-by-hand.md)). One
 public namespace, `meter.api`.
@@ -81,7 +82,7 @@ public namespace, `meter.api`.
 ;; written once: :warn :meter/label-value-not-in-set
 
 ;; the app's composition: beside its other routes, outside sessions
-(meter/make-metrics-routes meter {:path "/metrics" :token metrics-token})
+(meter/make-metrics-routes meter {:path "/metrics" :token metrics-token})   ; safe's secret, #secret :meter/token
 ```
 
 ```

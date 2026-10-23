@@ -6,7 +6,8 @@
   (:require
    [clojure.string :as str]
    [malli.core :as malli]
-   [malli.error :as malli-error]))
+   [malli.error :as malli-error]
+   [safe.api :as safe]))
 
 (def other
   "The value a label is counted under when the value given isn't in its
@@ -35,11 +36,12 @@
 (def routes-settings-shape
   "make-metrics-routes' settings, every key required.
    :path: the GET Prometheus pulls the metrics from, \"/metrics\".
-   :token: the bearer token it must send (Authorization: Bearer …); kept
-   out of the code, as a secret."
+   :token: the bearer token it must send (Authorization: Bearer …), a
+   secret of safe's (#secret :meter/token in the app's settings file);
+   text written out is refused."
   [:map {:closed true}
    [:path [:re #"^/"]]
-   [:token [:string {:min 1}]]])
+   [:token safe/secret]])
 
 (def label-value-shape
   "A label's value: text, a keyword (written without its colon, its
