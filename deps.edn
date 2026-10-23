@@ -1,4 +1,4 @@
-;; meter: manor's metrics. A meter the app makes once and hands to every
+;; meter: groundwork's metrics. A meter the app makes once and hands to every
 ;; library; metrics declared as data, each label's values a closed set; the
 ;; text Prometheus pulls, behind a bearer token. One tree: source-code/meter/.
 {:paths ["source-code"]

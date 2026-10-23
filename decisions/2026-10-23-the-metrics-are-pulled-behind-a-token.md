@@ -1,5 +1,7 @@
 # The metrics are pulled, behind a bearer token
 
+> **Changed in part** by [The family and its composer are groundwork](https://github.com/p4ulcristian/groundwork/blob/Starting-from-the-bottom/decisions/2026-10-23-the-family-and-its-composer-are-groundwork.md) (2026-10-23): manor, the family, and house, the composer, are both named groundwork now.
+
 **Decision:** Prometheus pulls the metrics; meter sends nothing anywhere. `make-metrics-routes` makes one GET, as reitit route data whose handler is a plain Ring handler, at the path the app's settings say, answered only to the bearer of the token they say (`Authorization: Bearer …`):
 
 - with the token: 200, `text/plain; version=0.0.4; charset=utf-8`, `cache-control: no-store`, the text of `write-metrics-text`;

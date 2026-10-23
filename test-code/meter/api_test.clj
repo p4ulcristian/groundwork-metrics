@@ -41,7 +41,7 @@
    :labels {:name #{:orders/of-shop}} :buckets [0.05 0.25 1] :read nil})
 
 (def ^:private started-total
-  {:name :house/starts-total :type :counter :help "Starts." :labels {} :buckets nil :read nil})
+  {:name :groundwork/starts-total :type :counter :help "Starts." :labels {} :buckets nil :read nil})
 
 (defn- events [lines]
   (mapv #(get % "event") @lines))
@@ -62,9 +62,9 @@
     (meter/set-gauge! m :mailroom/open-lines {:pipe :ws} 7)
     (doseq [seconds [0.046875 0.03125 0.125 0.5 5]]
       (meter/record-in-histogram! m :mailroom/answer-seconds {:name :orders/of-shop} seconds))
-    (is (= (str "# HELP house_starts_total Starts.\n"
-                "# TYPE house_starts_total counter\n"
-                "house_starts_total 0\n"
+    (is (= (str "# HELP groundwork_starts_total Starts.\n"
+                "# TYPE groundwork_starts_total counter\n"
+                "groundwork_starts_total 0\n"
                 "# HELP mailroom_answer_seconds Time to answer a message, in seconds.\n"
                 "# TYPE mailroom_answer_seconds histogram\n"
                 "mailroom_answer_seconds_bucket{name=\"orders/of-shop\",le=\"0.05\"} 2\n"
@@ -109,7 +109,7 @@
               (re-matches #"# TYPE [a-zA-Z_:][a-zA-Z0-9_:]* (counter|gauge|histogram|summary)" line)
               (re-matches sample-line line))
           line))
-    (doseq [family ["house_starts_total" "jvm_memory_bytes_used" "jvm_memory_pool_bytes_used" "jvm_gc_collection_seconds"
+    (doseq [family ["groundwork_starts_total" "jvm_memory_bytes_used" "jvm_memory_pool_bytes_used" "jvm_gc_collection_seconds"
                     "jvm_threads_current" "jvm_threads_started_total" "process_start_time_seconds" "process_cpu_seconds_total"]]
       (is (some #{(str "# HELP " family)} (map #(str/join " " (take 3 (str/split % #" "))) text-lines)) family))
     (is (re-find #"(?m)^jvm_memory_bytes_used\{area=\"heap\"\} [0-9]+$" text))
@@ -289,11 +289,11 @@
     (testing "the same declaration again is no change; a different one is refused"
       (meter/declare-metrics! m [started-total])
       (meter/declare-metrics! m [started-total])
-      (is (= {:house/starts-total ["was declared before, differently"]}
+      (is (= {:groundwork/starts-total ["was declared before, differently"]}
              (refused [(assoc started-total :help "Other.")])))
-      (is (= {:house/starts-total ["is written house_starts_total, as [:house-starts/total] is"]
-              :house-starts/total ["is written house_starts_total, as [:house/starts-total] is"]}
-             (refused [{:name :house-starts/total :type :counter :help "h" :labels {} :buckets nil :read nil}]))))))
+      (is (= {:groundwork/starts-total ["is written groundwork_starts_total, as [:groundwork-starts/total] is"]
+              :groundwork-starts/total ["is written groundwork_starts_total, as [:groundwork/starts-total] is"]}
+             (refused [{:name :groundwork-starts/total :type :counter :help "h" :labels {} :buckets nil :read nil}]))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Many threads
@@ -333,7 +333,7 @@
       (let [answer (ask headers)]
         (is (= 401 (:status answer)) (pr-str headers))
         (is (= "Bearer" (get-in answer [:headers "www-authenticate"])))
-        (is (not (str/includes? (:body answer) "house_starts_total")))))
+        (is (not (str/includes? (:body answer) "groundwork_starts_total")))))
     (let [answer (ask {"authorization" "Bearer s3cret"})]
       (is (= 200 (:status answer)))
       (is (= {"content-type" "text/plain; version=0.0.4; charset=utf-8" "cache-control" "no-store"} (:headers answer)))

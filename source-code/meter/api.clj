@@ -1,5 +1,5 @@
 (ns meter.api
-  "manor's metrics: a meter the app makes once and hands to every library,
+  "groundwork's metrics: a meter the app makes once and hands to every library,
    as it hands its log. Each library declares its metrics on it as data,
    every label with its closed set of values, and counts into them; the
    app serves the text Prometheus pulls, behind a bearer token. meter's one

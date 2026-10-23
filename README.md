@@ -107,7 +107,7 @@ A name is written with `_` (`:mailroom/answer-seconds` is
 namespace kept) or a whole number. A series appears at its first count; a
 metric without labels is there from its declaration, at 0.
 
-A manor library takes the meter as `:meter` in the options of the
+A groundwork library takes the meter as `:meter` in the options of the
 function where it starts counting, and declares its own metrics there,
 their buckets from its settings
 ([why](decisions/2026-10-23-a-library-takes-the-meter-as-meter.md)).
